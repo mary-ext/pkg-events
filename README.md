@@ -1,0 +1,3 @@
+# events
+
+Small event emitter
