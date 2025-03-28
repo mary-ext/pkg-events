@@ -12,9 +12,7 @@ type MaybeArray<T> = T | T[];
 
 /** Event emitter */
 export class EventEmitter<Events extends EventMap> {
-	#events?: {
-		[E in keyof Events]?: MaybeArray<ListenerFor<Events[E]>>;
-	};
+	#events?: { [E in keyof Events]?: MaybeArray<ListenerFor<Events[E]>> };
 
 	/**
 	 * Appends a listener for the specified event name
