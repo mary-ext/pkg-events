@@ -1,16 +1,20 @@
 // deno-lint-ignore-file no-explicit-any
 
-/** The expected listener shape */
-export type Listener = (...args: any[]) => void;
+/** Converts a tuple into a listener function */
+export type ListenerFor<T extends any[]> = (...args: T) => void;
 
-/** Generic record of the event name and its listener */
+/** Generic record of the event name and its argument tuple */
 export type EventMap = {
-	[key: string]: Listener;
+	[key: string | symbol]: any[];
 };
+
+type MaybeArray<T> = T | T[];
 
 /** Event emitter */
 export class EventEmitter<Events extends EventMap> {
-	#events?: Record<keyof Events, Listener | Listener[]>;
+	#events?: {
+		[E in keyof Events]?: MaybeArray<ListenerFor<Events[E]>>;
+	};
 
 	/**
 	 * Appends a listener for the specified event name
@@ -18,11 +22,10 @@ export class EventEmitter<Events extends EventMap> {
 	 * @param listener Callback that should be invoked when an event is dispatched
 	 * @returns Cleanup function that can be called to remove it
 	 */
-	on<E extends keyof Events>(name: E, listener: Events[E]): () => void {
-		let events: Record<keyof Events, Listener | Listener[]> | undefined;
-		let existing: Listener | Listener[] | undefined;
+	on<E extends keyof Events>(name: E, listener: ListenerFor<Events[E]>): () => void {
+		let events = this.#events;
+		let existing: MaybeArray<ListenerFor<Events[E]>> | undefined;
 
-		events = this.#events;
 		if (events === undefined) {
 			events = this.#events = Object.create(null);
 		} else {
@@ -37,6 +40,7 @@ export class EventEmitter<Events extends EventMap> {
 			events![name] = existing.concat(listener);
 		}
 
+		// @ts-expect-error: complains about `listener`
 		return this.off.bind(this, name, listener);
 	}
 
@@ -45,7 +49,7 @@ export class EventEmitter<Events extends EventMap> {
 	 * @param name Name of the event
 	 * @param listener Callback to remove
 	 */
-	off<E extends keyof Events>(name: E, listener: Events[E]): void {
+	off<E extends keyof Events>(name: E, listener: ListenerFor<Events[E]>): void {
 		const events = this.#events;
 
 		if (events === undefined) {
@@ -80,7 +84,7 @@ export class EventEmitter<Events extends EventMap> {
 	 * @param args Payload for the event
 	 * @returns Whether a listener has been called
 	 */
-	emit<E extends keyof Events>(name: E, ...args: Parameters<Events[E]>): boolean {
+	emit<E extends keyof Events>(name: E, ...args: Events[E]): boolean {
 		const events = this.#events;
 
 		if (events === undefined) {
